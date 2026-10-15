@@ -26,8 +26,7 @@ trips:
   - name: "2026 選舉投票"
     holiday: "2026選舉投票日"
     enabled: true
-    done:
-      - "回台中"
+    done: []
   - name: "2027 春節"
     holiday: "2027春節"
     enabled: true
