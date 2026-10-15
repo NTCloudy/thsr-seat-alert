@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay a few minutes)
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "run = 正常檢查；test-email = 寄測試信"
+        type: choice
+        options: [run, test-email]
+        default: run
   push:
     paths: ["config.yaml", "holidays.yaml", "thsr_alert/**"]
 
@@ -39,7 +45,7 @@ jobs:
           NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        run: python -m thsr_alert run
+        run: python -m thsr_alert ${{ github.event.inputs.mode || 'run' }}
 
       - name: Save notification state
         if: always()
