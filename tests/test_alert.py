@@ -66,6 +66,14 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(out.sale_open, datetime(2027, 1, 7, 0, 0, tzinfo=TPE))
         self.assertEqual(out.reminders, [timedelta(days=3), timedelta(days=1), timedelta(hours=1)])
 
+    def test_done_legs_skipped(self):
+        d = Path(tempfile.mkdtemp())
+        (d / "c.yaml").write_text(CONFIG.replace("    holiday: H\n", "    holiday: H\n    done: [去程]\n"),
+                                  encoding="utf-8")
+        (d / "h.yaml").write_text(HOLIDAYS, encoding="utf-8")
+        _, legs = cfg.load(d / "c.yaml", d / "h.yaml")
+        self.assertEqual([leg.label for leg in legs], ["回程"])
+
     def test_sale_open_override(self):
         hol = {"start": "2027-02-04", "end": "2027-02-10", "sale_open": "2027-01-05 00:00"}
         leg = cfg.Leg("t", "l", "台北", "左營", "1000", "1070", date(2027, 2, 3))

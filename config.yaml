@@ -42,11 +42,18 @@ default_legs: &home_legs
     car: standard
 
 # ------------------------------------------------------------
-# 要監控的節日（holiday 對應 holidays.yaml；enabled: false = 先不監控）
+# 要監控的節日（holiday 對應 holidays.yaml）
+#
+# 🎉 搶到票了，想關掉提醒？在那個節日底下加一行：
+#     done: [回台中]            ← 只搶到去程：停掉回台中，繼續盯回台北
+#     done: [回台中, 回台北]    ← 來回都搶到：整個節日都停掉
+#   或加 enabled: false 也可以把整個節日關掉
+# （端午 6/9、中秋 9/15 都在週三、沒有連假，所以不監控）
 # ------------------------------------------------------------
 trips:
   - name: 2026 選舉投票
     holiday: 2026選舉投票日
+    done: []        # 搶到後填 [回台中] 或 [回台中, 回台北]
     legs: *home_legs
 
   - name: 2027 春節
@@ -55,14 +62,6 @@ trips:
 
   - name: 2027 清明連假
     holiday: 2027兒童節清明節
-    legs: *home_legs
-
-  - name: 2027 端午節
-    holiday: 2027端午節
-    legs: *home_legs
-
-  - name: 2027 中秋節
-    holiday: 2027中秋節
     legs: *home_legs
 
   - name: 2027 國慶連假

@@ -71,6 +71,16 @@ trips:
 - 節日日期寫在 `holidays.yaml`，請對照 [人事行政總處公告](https://www.dgpa.gov.tw/) 確認
 - 春節等疏運期間如果高鐵另外公告開賣時間，在 `holidays.yaml` 填上 `sale_open: "2027-01-05 00:00"`
 
+### 🎉 搶到票了，怎麼關掉提醒？
+在 GitHub 網頁打開 `config.yaml`，按 ✏️，在該節日底下加一行再按 **Commit changes**：
+```yaml
+  - name: 2027 春節
+    holiday: 2027春節
+    done: [回台中]           # 只搶到去程：只停去程，回程繼續盯
+    # done: [回台中, 回台北] # 來回都搶到：整個節日都停
+    legs: *home_legs
+```
+
 改完 push 上去就會生效。想在本機先看排程：
 ```bash
 pip install -r requirements.txt
