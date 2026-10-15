@@ -40,6 +40,7 @@ class Report:
             parts += ["【開賣提醒】", *self.reminders, ""]
         if self.info:
             parts += ["【監控狀態】", *self.info, ""]
+        parts.append("⚙️ 搶到了？到控制台按「我搶到了」就會停止提醒：https://ntcloudy.github.io/thsr-seat-alert/")
         parts.append("—— THSR Seat Alert（資料來源：交通部 TDX 官方開放資料。請自行至官方管道訂票）")
         return "\n".join(parts)
 

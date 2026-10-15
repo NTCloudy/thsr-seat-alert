@@ -112,7 +112,7 @@ def load(config_path: str | Path, holidays_path: str | Path) -> tuple[Settings, 
         reminders = [parse_duration(x) for x in trip["remind_before_sale"]] \
             if "remind_before_sale" in trip else settings.default_reminders
         done = {str(x).strip() for x in (trip.get("done") or [])}  # legs already booked
-        for i, lg in enumerate(trip.get("legs") or []):
+        for i, lg in enumerate(trip.get("legs") or cfg.get("default_legs") or []):
             if lg.get("label", f"第{i + 1}段") in done:
                 continue
             d = resolve_date(lg.get("date", "start"), hol)

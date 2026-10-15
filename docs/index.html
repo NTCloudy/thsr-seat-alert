@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🚄 高鐵空位監控控制台</title>
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #fff; --fg: #1d2433; --muted: #6b7385; --line: #e3e7ef;
+    --brand: #e8601c; --brand-2: #c94f12; --ok: #1f9d55; --warn: #d97706; --off: #9aa3b5; --blue: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151c; --card:#1b2029; --fg:#e7eaf0; --muted:#98a1b3; --line:#2a313d; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+         background:var(--bg); color:var(--fg); line-height:1.5; }
+  header { background: linear-gradient(135deg, var(--brand), #f39237); color:#fff; padding:20px 16px 56px; }
+  header .wrap { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+  header h1 { margin:0; font-size:22px; }
+  header p { margin:4px 0 0; opacity:.9; font-size:14px; }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  main { margin-top:-40px; padding: 0 12px 110px; }
+  .card { background:var(--card); border-radius:14px; box-shadow:0 2px 10px rgba(0,0,0,.06); padding:16px; margin-bottom:14px; border:1px solid var(--line); }
+  .card h2 { margin:0 0 12px; font-size:17px; display:flex; align-items:center; gap:8px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .grow { flex:1; min-width:0; max-width:100%; }
+  .muted { color:var(--muted); font-size:13px; }
+  button, .btn { border:0; border-radius:10px; padding:9px 14px; font-size:14px; cursor:pointer; font-weight:600;
+                 background:var(--line); color:var(--fg); }
+  button:hover { filter:brightness(.96); }
+  button.primary { background:var(--brand); color:#fff; }
+  button.ok { background:var(--ok); color:#fff; }
+  button.ghost { background:transparent; border:1px solid var(--line); }
+  button.light { background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.4); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  input, select { font:inherit; padding:7px 9px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  input[type=time] { width:110px; }
+  .trip { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; }
+  .trip.off { opacity:.55; }
+  .trip-head { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .trip-head h3 { margin:0; font-size:16px; }
+  .leg { display:grid; grid-template-columns: 1fr auto; gap:6px 12px; padding:10px 0 2px; border-top:1px dashed var(--line); margin-top:10px; }
+  .leg .info b { font-size:15px; }
+  .leg .meta { font-size:13px; color:var(--muted); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; color:#fff; vertical-align:middle; }
+  .b-wait { background:var(--blue); } .b-live { background:var(--warn); } .b-done { background:var(--ok); }
+  .b-off { background:var(--off); } .b-past { background:var(--off); }
+  .switch { position:relative; display:inline-block; width:44px; height:24px; flex:none; }
+  .switch input { display:none; }
+  .switch span { position:absolute; inset:0; background:var(--off); border-radius:999px; transition:.2s; cursor:pointer; }
+  .switch span:before { content:""; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; }
+  .switch input:checked + span { background:var(--ok); }
+  .switch input:checked + span:before { transform:translateX(20px); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { padding:6px 4px; border-bottom:1px solid var(--line); text-align:left; }
+  .savebar { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line);
+             padding:12px; box-shadow:0 -4px 14px rgba(0,0,0,.08); transform:translateY(110%); transition:.25s; z-index:10; }
+  .savebar.show { transform:none; }
+  .toast { position:fixed; top:16px; left:50%; transform:translateX(-50%); background:#222; color:#fff; padding:10px 16px;
+           border-radius:10px; font-size:14px; z-index:20; display:none; max-width:90%; }
+  .legform { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap:8px; padding:10px; border:1px solid var(--line); border-radius:10px; margin-bottom:10px; }
+  .legform label { font-size:12px; color:var(--muted); display:flex; flex-direction:column; gap:3px; }
+  .notice { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; border-radius:10px; padding:10px 12px; font-size:14px; }
+  @media (prefers-color-scheme: dark) { .notice { background:#3a2414; color:#fdba74; border-color:#7c3a12; } }
+  details summary { cursor:pointer; font-weight:600; }
+  a { color:var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div>
+      <h1>🚄 高鐵空位監控控制台</h1>
+      <p id="runStatus">讀取監控狀態中…</p>
+    </div>
+    <div class="row">
+      <button class="light" id="btnRun" title="馬上檢查一次座位">🔄 立即檢查</button>
+      <button class="light" id="btnTestMail">✉️ 寄測試信</button>
+      <button class="light" id="btnToken">🔑 登入</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card" id="loginCard" style="display:none">
+    <h2>🔑 第一次使用：連結你的 GitHub</h2>
+    <div class="notice">沒登入也能查看狀態；要<b>修改設定</b>或按<b>我搶到了</b>，需要一組只能存取這個專案的 GitHub 金鑰（只要設定一次，金鑰只存在這台裝置的瀏覽器裡）。</div>
+    <ol class="muted" style="font-size:14px">
+      <li>點這裡 → <a id="patLink" target="_blank" rel="noopener">建立 GitHub 金鑰</a>（已幫你預填好權限）</li>
+      <li>Repository access 選 <b>Only select repositories</b> → 選 <b>thsr-seat-alert</b></li>
+      <li>確認 Permissions 有 <b>Contents：Read and write</b>、<b>Actions：Read and write</b></li>
+      <li>按 <b>Generate token</b>，把 <code>github_pat_</code> 開頭的金鑰貼到下面</li>
+    </ol>
+    <div class="row">
+      <input id="tokenInput" class="grow" type="password" placeholder="github_pat_..." autocomplete="off">
+      <button class="primary" id="btnSaveToken">儲存</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📅 我的連假</h2>
+    <div id="trips"><p class="muted">載入中…</p></div>
+    <div class="row" style="margin-top:6px">
+      <select id="addHoliday" class="grow"></select>
+      <button class="ghost" id="btnAddTrip">＋ 加入監控</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🚆 路線與時段 <span class="muted">（所有節日共用）</span></h2>
+    <div id="legs"></div>
+  </div>
+
+  <div class="card">
+    <h2>⏰ 提醒設定</h2>
+    <div class="row">
+      <label class="grow">開賣前多久提醒（可多個，用逗號隔開，例如 <code>1d, 6h, 10m</code>）<br>
+        <input id="reminders" style="width:100%" placeholder="6h"></label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="switch"><input type="checkbox" id="notifyOpen"><span></span></label>
+      <span>開賣當下再寄一封「開賣了」</span>
+    </div>
+    <p class="muted">開賣後若有人退票（售完 → 有位），一律會即時寄信通知。</p>
+  </div>
+
+  <div class="card">
+    <details>
+      <summary>🗓️ 節日日期表（進階）</summary>
+      <p class="muted">依人事行政總處公告。春節等疏運期間若高鐵另外公告開賣時間，填在「特別開賣時間」（例：2027-01-05 00:00）。</p>
+      <div style="overflow-x:auto">
+        <table id="holTable"></table>
+      </div>
+      <button class="ghost" id="btnAddHol" style="margin-top:8px">＋ 新增節日</button>
+    </details>
+  </div>
+
+  <p class="muted" style="text-align:center">
+    資料來源：交通部 TDX 官方開放資料｜本工具只負責通知，請自行至
+    <a href="https://irs.thsrc.com.tw/IMINT/" target="_blank" rel="noopener">高鐵官網</a> 或 T Express App 訂票｜
+    <a href="https://github.com/NTCloudy/thsr-seat-alert" target="_blank" rel="noopener">GitHub</a>
+  </p>
+</main>
+
+<div class="savebar" id="saveBar">
+  <div class="wrap row">
+    <span class="grow">✏️ 有尚未儲存的變更</span>
+    <button class="ghost" id="btnDiscard">還原</button>
+    <button class="primary" id="btnSave">💾 儲存</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const OWNER = "NTCloudy", REPO = "thsr-seat-alert", BRANCH = "main";
+const API = `https://api.github.com/repos/${OWNER}/${REPO}`;
+const STATIONS = ["南港","台北","板橋","桃園","新竹","苗栗","台中","彰化","雲林","嘉義","台南","左營"];
+const DATE_RULES = {"start-1":"連假前一天","start":"連假第一天","end":"收假那天（最後一天）","end+1":"收假後第一天"};
+const CAR = {standard:"標準車廂", business:"商務車廂", any:"不限車廂"};
+const WEEK = "日一二三四五六";
+const YAML_OPTS = { schema: jsyaml.CORE_SCHEMA };
+const DUMP_OPTS = { schema: jsyaml.CORE_SCHEMA, forceQuotes: true, quotingType: '"', lineWidth: -1, noRefs: true };
+
+let S = { cfg:null, cfgSha:null, hol:null, holSha:null, origCfg:"", origHol:"" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const token = () => localStorage.getItem("thsr_pat") || "";
+
+function toast(msg, ms=2600) { const t=$("toast"); t.textContent=msg; t.style.display="block"; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none", ms); }
+
+async function gh(path, opts={}) {
+  const headers = { "Accept":"application/vnd.github+json", ...(opts.headers||{}) };
+  if (token()) headers.Authorization = `Bearer ${token()}`;
+  const r = await fetch(path.startsWith("http") ? path : API + path, { ...opts, headers });
+  if (!r.ok) {
+    let msg = `${r.status}`;
+    try { msg += " " + (await r.json()).message; } catch {}
+    if (r.status === 401) msg = "金鑰無效或已過期，請重新登入";
+    if (r.status === 403 || r.status === 404) msg += "（金鑰權限不足？需要 Contents 與 Actions 的 Read and write）";
+    throw new Error(msg);
+  }
+  return r.status === 204 ? null : r.json();
+}
+const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,"")), c => c.charCodeAt(0)));
+const b64enc = s => { const b = new TextEncoder().encode(s); let bin=""; b.forEach(x => bin += String.fromCharCode(x)); return btoa(bin); };
+
+async function loadFile(name) {
+  const j = await gh(`/contents/${name}?ref=${BRANCH}&t=${Date.now()}`);
+  return { text: b64dec(j.content), sha: j.sha };
+}
+
+// ---------- date helpers (all in Asia/Taipei) ----------
+const pad = n => String(n).padStart(2,"0");
+const parseD = s => { const [y,m,d] = String(s).slice(0,10).split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); };
+const fmtD = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+const addDays = (d,n) => new Date(d.getTime() + n*86400000);
+const tpeTime = (dateStr, hhmm="00:00") => new Date(`${dateStr}T${hhmm}:00+08:00`);
+const shortD = d => `${d.getUTCMonth()+1}/${d.getUTCDate()}（${WEEK[d.getUTCDay()]}）`;
+const fmtDT = dt => { const t = new Date(dt.getTime() + 8*3600000);
+  return `${t.getUTCMonth()+1}/${t.getUTCDate()}（${WEEK[t.getUTCDay()]}）${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`; };
+function parseDur(s) { const m = /^\s*(\d+)\s*([dhm])\s*$/i.exec(s); if (!m) return null;
+  return +m[1] * ({d:86400000,h:3600000,m:60000})[m[2].toLowerCase()]; }
+function fmtDur(ms) { const d=Math.floor(ms/86400000), h=Math.floor(ms%86400000/3600000), m=Math.floor(ms%3600000/60000);
+  return d ? `${d} 天${h?` ${h} 小時`:""}` : h ? `${h} 小時${m?` ${m} 分`:""}` : `${m} 分`; }
+function resolveDate(rule, hol) {
+  const m = /^(start|end)\s*([+-]\s*\d+)?$/.exec(String(rule).trim());
+  if (m) return addDays(parseD(hol[m[1]]), m[2] ? parseInt(m[2].replace(/\s/g,"")) : 0);
+  return parseD(rule);
+}
+function saleOpen(travelDate, hol) {
+  if (hol && hol.sale_open) return new Date(String(hol.sale_open).replace(" ","T") + (String(hol.sale_open).length<=16?":00":"") + "+08:00");
+  const st = S.cfg.settings || {};
+  return tpeTime(fmtD(addDays(travelDate, -(+st.sale_open_days_before || 27))), String(st.sale_open_time || "00:00").slice(0,5));
+}
+
+// ---------- rendering ----------
+function holidays() { return (S.hol && (S.hol.holidays || S.hol)) || {}; }
+function legsOf(trip) { return trip.legs || S.cfg.default_legs || []; }
+
+function render() {
+  const cfg = S.cfg, hols = holidays(), now = new Date();
+  cfg.trips = cfg.trips || [];
+  const reminders = (cfg.settings?.remind_before_sale || []).map(parseDur).filter(Boolean);
+
+  const sorted = cfg.trips.map((t,i)=>({t,i})).sort((a,b) => String(hols[a.t.holiday]?.start||"9").localeCompare(String(hols[b.t.holiday]?.start||"9")));
+  $("trips").innerHTML = sorted.length ? sorted.map(({t,i}) => {
+    const h = hols[t.holiday];
+    const enabled = t.enabled !== false, done = t.done || [];
+    const head = `<div class="trip-head">
+        <label class="switch" title="開啟／關閉這個節日的監控"><input type="checkbox" data-act="toggle" data-i="${i}" ${enabled?"checked":""}><span></span></label>
+        <h3 class="grow">${esc(t.name)}</h3>
+        <span class="muted">${h ? `${shortD(parseD(h.start))} ～ ${shortD(parseD(h.end))}` : "⚠️ 節日日期表找不到"}</span>
+        <button class="ghost" data-act="del" data-i="${i}" title="移除">🗑️</button></div>`;
+    if (!h) return `<div class="trip off">${head}</div>`;
+    const legs = legsOf(t).map(lg => {
+      const d = resolveDate(lg.date ?? "start", h), open = saleOpen(d, h);
+      const isDone = done.includes(lg.label);
+      const past = addDays(d,1) <= now;
+      let badge;
+      if (!enabled) badge = `<span class="badge b-off">已關閉</span>`;
+      else if (isDone) badge = `<span class="badge b-done">✅ 已搶到</span>`;
+      else if (past) badge = `<span class="badge b-past">已過期</span>`;
+      else if (now < open) badge = `<span class="badge b-wait">⏳ ${fmtDur(open-now)}後開賣</span>`;
+      else badge = `<span class="badge b-live">👀 監控退票中</span>`;
+      const remindTxt = reminders.length ? reminders.map(r => fmtDT(new Date(open - r))).join("、") : "不提醒";
+      const btn = isDone
+        ? `<button class="ghost" data-act="undone" data-i="${i}" data-l="${esc(lg.label)}">↩️ 取消，繼續盯</button>`
+        : `<button class="ok" data-act="done" data-i="${i}" data-l="${esc(lg.label)}" ${!enabled||past?"disabled":""}>🎉 我搶到了</button>`;
+      return `<div class="leg"><div class="info">
+          <b>${esc(lg.label)}</b>　${badge}<br>
+          <span>${shortD(d)} ${esc(lg.from)} → ${esc(lg.to)}　${esc(String(lg.depart_after||"00:00").slice(0,5))}–${esc(String(lg.depart_before||"23:59").slice(0,5))} 出發</span>
+          <div class="meta">開賣 ${fmtDT(open)}｜提醒 ${remindTxt}｜${CAR[lg.car||"standard"]||esc(lg.car)}</div>
+        </div><div>${btn}</div></div>`;
+    }).join("");
+    return `<div class="trip ${enabled?"":"off"}">${head}${legs}</div>`;
+  }).join("") : `<p class="muted">還沒有要監控的節日，從下面選一個加入吧。</p>`;
+
+  const used = new Set(cfg.trips.map(t => t.holiday));
+  const opts = Object.entries(hols).filter(([k,v]) => !used.has(k) && addDays(parseD(v.end),1) > now)
+    .sort((a,b)=>String(a[1].start).localeCompare(String(b[1].start)))
+    .map(([k,v]) => `<option value="${esc(k)}">${esc(k)}（${shortD(parseD(v.start))}～${shortD(parseD(v.end))}）</option>`);
+  $("addHoliday").innerHTML = opts.length ? opts.join("") : `<option value="">（沒有其他節日，可在下方節日日期表新增）</option>`;
+
+  cfg.default_legs = cfg.default_legs || [];
+  $("legs").innerHTML = cfg.default_legs.map((lg,j) => `<div class="legform">
+      <label>名稱<input data-leg="${j}" data-k="label" value="${esc(lg.label)}"></label>
+      <label>哪一天<select data-leg="${j}" data-k="date">${Object.entries(DATE_RULES).map(([k,v])=>`<option value="${k}" ${String(lg.date)===k?"selected":""}>${v}</option>`).join("")}${DATE_RULES[lg.date]?"":`<option selected value="${esc(lg.date)}">${esc(lg.date)}</option>`}</select></label>
+      <label>起站<select data-leg="${j}" data-k="from">${STATIONS.map(s=>`<option ${String(lg.from).replace("臺","台")===s?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label>迄站<select data-leg="${j}" data-k="to">${STATIONS.map(s=>`<option ${String(lg.to).replace("臺","台")===s?"selected":""}>${s}</option>`).join("")}</select></label>
+      <label>最早出發<input type="time" data-leg="${j}" data-k="depart_after" value="${esc(String(lg.depart_after||"00:00").slice(0,5))}"></label>
+      <label>最晚出發<input type="time" data-leg="${j}" data-k="depart_before" value="${esc(String(lg.depart_before||"23:59").slice(0,5))}"></label>
+      <label>車廂<select data-leg="${j}" data-k="car">${Object.entries(CAR).map(([k,v])=>`<option value="${k}" ${(lg.car||"standard")===k?"selected":""}>${v}</option>`).join("")}</select></label>
+    </div>`).join("");
+
+  $("reminders").value = (cfg.settings?.remind_before_sale || []).join(", ");
+  $("notifyOpen").checked = !!cfg.settings?.notify_when_sale_opens;
+
+  $("holTable").innerHTML = `<tr><th>名稱</th><th>第一天</th><th>最後一天</th><th>特別開賣時間</th><th></th></tr>` +
+    Object.entries(hols).sort((a,b)=>String(a[1].start).localeCompare(String(b[1].start))).map(([k,v]) => `<tr>
+      <td>${esc(k)}</td>
+      <td><input type="date" data-hol="${esc(k)}" data-k="start" value="${esc(String(v.start).slice(0,10))}"></td>
+      <td><input type="date" data-hol="${esc(k)}" data-k="end" value="${esc(String(v.end).slice(0,10))}"></td>
+      <td><input data-hol="${esc(k)}" data-k="sale_open" placeholder="（依 28 天規則）" value="${esc(v.sale_open||"")}" style="width:150px"></td>
+      <td><button class="ghost" data-act="delhol" data-h="${esc(k)}">🗑️</button></td></tr>`).join("");
+
+  updateSaveBar();
+}
+
+function dumpCfg() { return jsyaml.dump(S.cfg, DUMP_OPTS); }
+function dumpHol() { return jsyaml.dump(S.hol, DUMP_OPTS); }
+function dirty() { return { cfg: dumpCfg() !== S.origCfg, hol: dumpHol() !== S.origHol }; }
+function updateSaveBar() { const d = dirty(); $("saveBar").classList.toggle("show", d.cfg || d.hol); }
+
+function needToken() {
+  if (token()) return false;
+  $("loginCard").style.display = "block"; $("loginCard").scrollIntoView({behavior:"smooth"});
+  toast("請先登入 GitHub 金鑰才能修改"); return true;
+}
+
+// ---------- actions ----------
+document.addEventListener("click", async e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const i = +el.dataset.i, trip = S.cfg.trips[i];
+  const act = el.dataset.act;
+  if (act === "done" || act === "undone") {
+    if (needToken()) return;
+    trip.done = trip.done || [];
+    if (act === "done" && !trip.done.includes(el.dataset.l)) trip.done.push(el.dataset.l);
+    if (act === "undone") trip.done = trip.done.filter(x => x !== el.dataset.l);
+    render(); await save(act === "done" ? `🎉 ${trip.name}・${el.dataset.l} 已搶到，停止提醒` : `↩️ ${trip.name}・${el.dataset.l} 恢復監控`);
+  } else if (act === "del") {
+    if (!confirm(`確定移除「${trip.name}」？`)) return;
+    S.cfg.trips.splice(i,1); render();
+  } else if (act === "delhol") {
+    if (!confirm(`確定刪除節日「${el.dataset.h}」？`)) return;
+    delete holidays()[el.dataset.h]; render();
+  }
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.act === "toggle") { S.cfg.trips[+el.dataset.i].enabled = el.checked; render(); return; }
+  if (el.dataset.leg !== undefined) { S.cfg.default_legs[+el.dataset.leg][el.dataset.k] = el.value; render(); return; }
+  if (el.dataset.hol !== undefined) {
+    const h = holidays()[el.dataset.hol];
+    if (el.dataset.k === "sale_open" && !el.value.trim()) delete h.sale_open; else h[el.dataset.k] = el.value.trim();
+    render(); return;
+  }
+  if (el.id === "reminders") {
+    const parts = el.value.split(/[,，\s]+/).filter(Boolean);
+    const bad = parts.filter(p => !parseDur(p));
+    if (bad.length) { toast(`看不懂：${bad.join(", ")}（例：1d、6h、30m）`); el.value = (S.cfg.settings.remind_before_sale||[]).join(", "); return; }
+    S.cfg.settings.remind_before_sale = parts; render(); return;
+  }
+  if (el.id === "notifyOpen") { S.cfg.settings.notify_when_sale_opens = el.checked; render(); }
+});
+$("btnAddTrip").onclick = () => {
+  const k = $("addHoliday").value; if (!k) return;
+  S.cfg.trips.push({ name: k.replace(/^(\d{4})/, "$1 "), holiday: k, enabled: true, done: [] }); render();
+};
+$("btnAddHol").onclick = () => {
+  const name = prompt("節日名稱（例：2027元旦）"); if (!name) return;
+  const start = prompt("連假第一天（YYYY-MM-DD）"); if (!/^\d{4}-\d{2}-\d{2}$/.test(start||"")) return toast("日期格式錯誤");
+  const end = prompt("連假最後一天（YYYY-MM-DD）", start); if (!/^\d{4}-\d{2}-\d{2}$/.test(end||"")) return toast("日期格式錯誤");
+  holidays()[name] = { start, end }; render();
+};
+$("btnDiscard").onclick = () => { S.cfg = jsyaml.load(S.origCfg, YAML_OPTS); S.hol = jsyaml.load(S.origHol, YAML_OPTS); render(); };
+$("btnSave").onclick = () => save("Update settings from web console");
+
+const CFG_HEADER = "# 高鐵空位監控設定檔（由網頁控制台產生：https://ntcloudy.github.io/thsr-seat-alert/）\n" +
+  "# date: start-1=連假前一天、start=第一天、end=收假那天、end+1=收假後第一天｜car: standard/business/any\n" +
+  "# done: 已搶到的車程（不再提醒）｜remind_before_sale: d=天 h=小時 m=分鐘\n";
+const HOL_HEADER = "# 節日／連假日期表（依行政院人事行政總處公告）｜sale_open: 高鐵特別公告的開賣時間（選填）\n";
+
+async function save(message) {
+  if (needToken()) return;
+  const d = dirty(); if (!d.cfg && !d.hol) return;
+  $("btnSave").disabled = true;
+  try {
+    if (d.hol) {
+      const r = await gh(`/contents/holidays.yaml`, { method:"PUT", body: JSON.stringify({ message, branch:BRANCH, sha:S.holSha, content: b64enc(HOL_HEADER + dumpHol()) }) });
+      S.holSha = r.content.sha; S.origHol = dumpHol();
+    }
+    if (d.cfg) {
+      const r = await gh(`/contents/config.yaml`, { method:"PUT", body: JSON.stringify({ message, branch:BRANCH, sha:S.cfgSha, content: b64enc(CFG_HEADER + dumpCfg()) }) });
+      S.cfgSha = r.content.sha; S.origCfg = dumpCfg();
+    }
+    toast("✅ 已儲存，約 1 分鐘內生效"); updateSaveBar(); setTimeout(loadRuns, 8000);
+  } catch (err) {
+    toast("❌ 儲存失敗：" + err.message, 6000);
+    if (String(err.message).includes("409") || String(err.message).includes("does not match")) { toast("設定已在別處被修改，重新載入中…", 4000); setTimeout(init, 1500); }
+  } finally { $("btnSave").disabled = false; }
+}
+
+async function dispatch(mode) {
+  if (needToken()) return;
+  try {
+    await gh(`/actions/workflows/alert.yml/dispatches`, { method:"POST", body: JSON.stringify({ ref:BRANCH, inputs:{ mode } }) });
+    toast(mode === "run" ? "🔄 已開始檢查，約 30 秒後完成" : "✉️ 測試信寄送中，約 30 秒後請查收"); setTimeout(loadRuns, 15000); setTimeout(loadRuns, 40000);
+  } catch (err) { toast("❌ " + err.message, 6000); }
+}
+$("btnRun").onclick = () => dispatch("run");
+$("btnTestMail").onclick = () => dispatch("test-email");
+
+async function loadRuns() {
+  try {
+    const j = await gh(`/actions/workflows/alert.yml/runs?per_page=1`);
+    const r = j.workflow_runs[0];
+    if (!r) { $("runStatus").textContent = "尚未執行過"; return; }
+    const ok = r.conclusion === "success", running = r.status !== "completed";
+    $("runStatus").innerHTML = `${running ? "⏳ 檢查中…" : ok ? "🟢 監控運作中" : "🔴 上次檢查失敗"}｜上次檢查 ${fmtDT(new Date(r.updated_at))}（每 10 分鐘自動檢查） <a href="${r.html_url}" target="_blank" rel="noopener" style="color:#fff">詳情</a>`;
+  } catch { $("runStatus").textContent = "無法取得監控狀態"; }
+}
+
+function updateLoginUI() {
+  $("btnToken").textContent = token() ? "🔓 登出" : "🔑 登入";
+}
+$("btnToken").onclick = () => {
+  if (token()) { if (confirm("登出並移除這台裝置上的金鑰？")) { localStorage.removeItem("thsr_pat"); updateLoginUI(); toast("已登出"); } }
+  else { $("loginCard").style.display = "block"; $("loginCard").scrollIntoView({behavior:"smooth"}); }
+};
+$("btnSaveToken").onclick = async () => {
+  const v = $("tokenInput").value.trim(); if (!v) return;
+  localStorage.setItem("thsr_pat", v);
+  try { const j = await gh(``); if (!j.permissions?.push) throw new Error("這組金鑰沒有寫入權限");
+    $("loginCard").style.display = "none"; $("tokenInput").value = ""; updateLoginUI(); toast("✅ 登入成功");
+  } catch (err) { localStorage.removeItem("thsr_pat"); toast("❌ " + err.message, 6000); }
+};
+$("patLink").href = "https://github.com/settings/personal-access-tokens/new?" + new URLSearchParams({
+  name: "thsr-seat-alert 控制台", description: "高鐵空位監控網頁控制台", target_name: OWNER, expires_in: "366",
+  contents: "write", actions: "write" });
+
+window.addEventListener("beforeunload", e => { const d = dirty(); if (d.cfg || d.hol) { e.preventDefault(); e.returnValue = ""; } });
+
+async function init() {
+  try {
+    const [c, h] = await Promise.all([loadFile("config.yaml"), loadFile("holidays.yaml")]);
+    S.cfg = jsyaml.load(c.text, YAML_OPTS) || {}; S.cfgSha = c.sha;
+    S.hol = jsyaml.load(h.text, YAML_OPTS) || {holidays:{}}; S.holSha = h.sha;
+    S.cfg.settings = S.cfg.settings || {};
+    S.origCfg = dumpCfg(); S.origHol = dumpHol();
+    render();
+  } catch (err) { $("trips").innerHTML = `<p>❌ 載入失敗：${esc(err.message)}</p>`; }
+  updateLoginUI(); loadRuns();
+}
+init(); setInterval(loadRuns, 60000);
+</script>
+</body>
+</html>

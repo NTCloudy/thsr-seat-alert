@@ -1,78 +1,50 @@
 # ============================================================
-#  高鐵空位監控設定檔：改這個檔案就好
-#  改完後 push 到 GitHub，下一輪檢查（約 10 分鐘內）就會生效
-#  收件 Email 不寫在這裡，放在 GitHub Secrets 的 NOTIFY_EMAIL（比較安全）
+#  高鐵空位監控設定檔
+#  建議用網頁控制台操作：https://ntcloudy.github.io/thsr-seat-alert/
+#  （也可以直接手動編輯這個檔案）
 # ============================================================
-
 settings:
-  # 高鐵開賣規則：乘車日前 28 天（含當天），也就是乘車日往前推 27 天的 00:00 開賣
-  sale_open_days_before: 27
+  sale_open_days_before: 27      # 乘車日前 28 天（含當天）開賣
   sale_open_time: "00:00"
-
-  # 開賣前多久寄提醒信（單位：d=天、h=小時、m=分鐘）
-  remind_before_sale: [6h]
-
-  # 開賣當下要不要再寄一封「開賣了」
+  remind_before_sale: ["6h"]     # d=天 h=小時 m=分鐘
   notify_when_sale_opens: false
 
-# ------------------------------------------------------------
-# 固定路線：連假前一天晚上 台北→台中，收假那天下午 台中→台北
-#   date    : start   = 連假第一天
-#             start-1 = 連假前一天
-#             end     = 連假最後一天（收假那天）
-#             end+1   = 收假後第一天
-#             也可以直接寫日期，例如 2027-02-03
-#   car     : standard（標準）/ business（商務）/ any（都可以）
-#   trains  : （選填）只盯特定車次，例如 ["0661"]
-# ------------------------------------------------------------
-default_legs: &home_legs
-  - label: 回台中
-    date: start-1
-    from: 台北
-    to: 台中
+# 所有節日共用的路線（date: start-1=連假前一天、end=收假那天）
+default_legs:
+  - label: "回台中"
+    date: "start-1"
+    from: "台北"
+    to: "台中"
     depart_after: "19:30"
     depart_before: "20:30"
-    car: standard
-  - label: 回台北
-    date: end
-    from: 台中
-    to: 台北
+    car: "standard"
+  - label: "回台北"
+    date: "end"
+    from: "台中"
+    to: "台北"
     depart_after: "15:00"
     depart_before: "17:00"
-    car: standard
+    car: "standard"
 
-# ------------------------------------------------------------
-# 要監控的節日（holiday 對應 holidays.yaml）
-#
-# 🎉 搶到票了，想關掉提醒？在那個節日底下加一行：
-#     done: [回台中]            ← 只搶到去程：停掉回台中，繼續盯回台北
-#     done: [回台中, 回台北]    ← 來回都搶到：整個節日都停掉
-#   或加 enabled: false 也可以把整個節日關掉
-# （端午 6/9、中秋 9/15 都在週三、沒有連假，所以不監控）
-# ------------------------------------------------------------
+# 要監控的節日；done = 已搶到的車程（不再提醒）
 trips:
-  - name: 2026 選舉投票
-    holiday: 2026選舉投票日
-    done: []        # 搶到後填 [回台中] 或 [回台中, 回台北]
-    legs: *home_legs
-
-  - name: 2027 春節
-    holiday: 2027春節
-    legs: *home_legs
-
-  - name: 2027 清明連假
-    holiday: 2027兒童節清明節
-    legs: *home_legs
-
-  - name: 2027 國慶連假
-    holiday: 2027國慶日
-    legs: *home_legs
-
-  - name: 2027 光復節連假
-    holiday: 2027臺灣光復節
-    legs: *home_legs
-
-  # 想加其他節日就照上面格式新增，例如：
-  # - name: 2027 元旦
-  #   holiday: 2027元旦
-  #   legs: *home_legs
+  - name: "2026 選舉投票"
+    holiday: "2026選舉投票日"
+    enabled: true
+    done: []
+  - name: "2027 春節"
+    holiday: "2027春節"
+    enabled: true
+    done: []
+  - name: "2027 清明連假"
+    holiday: "2027兒童節清明節"
+    enabled: true
+    done: []
+  - name: "2027 國慶連假"
+    holiday: "2027國慶日"
+    enabled: true
+    done: []
+  - name: "2027 光復節連假"
+    holiday: "2027臺灣光復節"
+    enabled: true
+    done: []
