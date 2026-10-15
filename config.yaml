@@ -1,0 +1,86 @@
+# ============================================================
+#  高鐵空位監控設定檔：改這個檔案就好
+#  改完後 push 到 GitHub，下一輪檢查（約 10 分鐘內）就會生效
+#  收件 Email 不寫在這裡，放在 GitHub Secrets 的 NOTIFY_EMAIL（比較安全）
+# ============================================================
+
+settings:
+  # 高鐵開賣規則：乘車日前 28 天（含當天），也就是乘車日往前推 27 天的 00:00 開賣
+  # 如果高鐵改規則，改這兩個數字就好
+  sale_open_days_before: 27
+  sale_open_time: "00:00"
+
+  # 開賣前多久寄提醒信，預設值（每個行程可以另外設定）
+  # 單位：d=天、h=小時、m=分鐘
+  remind_before_sale: [3d, 1d, 1h]
+
+  # 開賣當下要不要再寄一封「開賣了」
+  notify_when_sale_opens: true
+
+# ------------------------------------------------------------
+# 行程：要監控哪個節日、哪一天、哪段路線
+#   holiday : 對應 holidays.yaml 裡的節日名稱
+#   enabled : false = 這個節日先不監控
+#   date    : start   = 連假第一天
+#             start-1 = 連假前一天（例如下班後出發）
+#             end     = 連假最後一天
+#             end+1   = 收假後第一天
+#             也可以直接寫日期，例如 2027-02-03
+#   from/to : 站名（南港 台北 板橋 桃園 新竹 苗栗 台中 彰化 雲林 嘉義 台南 左營）
+#   depart_after / depart_before : 只看這個時段出發的車
+#   car     : standard（標準）/ business（商務）/ any（都可以）
+#   trains  : （選填）只盯特定車次，例如 ["0609", "0813"]
+# ------------------------------------------------------------
+trips:
+  - name: 2027 元旦連假
+    holiday: 2027元旦
+    enabled: true
+    remind_before_sale: [3d, 1d, 1h, 10m]
+    legs:
+      - label: 去程
+        date: start-1
+        from: 台北
+        to: 左營
+        depart_after: "17:00"
+        depart_before: "22:00"
+        car: standard
+      - label: 回程
+        date: end
+        from: 左營
+        to: 台北
+        depart_after: "13:00"
+        depart_before: "21:00"
+        car: standard
+
+  - name: 2027 春節
+    holiday: 2027春節
+    enabled: true
+    remind_before_sale: [7d, 3d, 1d, 2h, 10m]
+    legs:
+      - label: 去程
+        date: start-1
+        from: 台北
+        to: 左營
+        depart_after: "12:00"
+        depart_before: "22:00"
+        car: any
+      - label: 回程
+        date: end
+        from: 左營
+        to: 台北
+        depart_after: "10:00"
+        depart_before: "22:00"
+        car: any
+
+  - name: 2027 二二八連假
+    holiday: 2027和平紀念日
+    enabled: false
+    legs:
+      - label: 去程
+        date: start
+        from: 台北
+        to: 左營
+      - label: 回程
+        date: end
+        from: 左營
+        to: 台北
