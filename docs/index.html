@@ -385,11 +385,17 @@ $("btnTestMail").onclick = () => dispatch("test-email");
 
 async function loadRuns() {
   try {
-    const j = await gh(`/actions/workflows/alert.yml/runs?per_page=1`);
-    const r = j.workflow_runs[0];
-    if (!r) { $("runStatus").textContent = "尚未執行過"; return; }
-    const ok = r.conclusion === "success", running = r.status !== "completed";
-    $("runStatus").innerHTML = `${running ? "⏳ 檢查中…" : ok ? "🟢 監控運作中" : "🔴 上次檢查失敗"}｜上次檢查 ${fmtDT(new Date(r.updated_at))}（每 10 分鐘自動檢查） <a href="${r.html_url}" target="_blank" rel="noopener" style="color:#fff">詳情</a>`;
+    const [m, a] = await Promise.all([
+      gh(`/actions/workflows/monitor.yml/runs?per_page=1`),
+      gh(`/actions/workflows/alert.yml/runs?per_page=1`).catch(() => ({workflow_runs: []}))]);
+    const r = m.workflow_runs[0], one = a.workflow_runs[0];
+    const extra = one && one.status !== "completed" ? "｜⏳ 手動檢查進行中…" : "";
+    if (!r) { $("runStatus").textContent = "尚未啟動持續監控" + extra; return; }
+    let txt;
+    if (r.status === "in_progress") txt = `🟢 持續監控中（每 10 分鐘檢查一次，本輪從 ${fmtDT(new Date(r.run_started_at || r.created_at))} 開始）`;
+    else if (r.status === "queued" || r.status === "pending" || r.status === "waiting") txt = `🟡 監控即將接續啟動…`;
+    else txt = r.conclusion === "success" || r.conclusion === "cancelled" ? `🟡 監控交接中（上一輪結束於 ${fmtDT(new Date(r.updated_at))}）` : `🔴 監控異常，請通知維護者`;
+    $("runStatus").innerHTML = `${txt}${extra} <a href="${r.html_url}" target="_blank" rel="noopener" style="color:#fff">詳情</a>`;
   } catch { $("runStatus").textContent = "無法取得監控狀態"; }
 }
 

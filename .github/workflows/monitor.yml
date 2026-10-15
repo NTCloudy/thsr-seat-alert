@@ -1,0 +1,46 @@
+name: THSR Monitor (continuous)
+
+# Runs a ~5h45m loop that checks every 10 minutes, then dispatches the next run.
+# The cron entries are only a watchdog to restart the chain if it ever breaks
+# (extra runs just wait in the concurrency queue; only one monitor runs at a time).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */2 * * *"
+
+concurrency:
+  group: thsr-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 358
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Monitor loop (every 10 minutes)
+        env:
+          TDX_CLIENT_ID: ${{ secrets.TDX_CLIENT_ID }}
+          TDX_CLIENT_SECRET: ${{ secrets.TDX_CLIENT_SECRET }}
+          NOTIFY_EMAIL: ${{ secrets.NOTIFY_EMAIL }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        run: cp -r scripts /tmp/thsr-scripts && bash /tmp/thsr-scripts/monitor_loop.sh
+
+      - name: Hand off to the next monitor run
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run monitor.yml --ref main -R "$GITHUB_REPOSITORY"
