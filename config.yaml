@@ -25,7 +25,7 @@ default_legs:
 trips:
   - name: "2026 選舉投票"
     holiday: "2026選舉投票日"
-    enabled: true
+    enabled: false
     done: []
   - name: "2027 春節"
     holiday: "2027春節"
