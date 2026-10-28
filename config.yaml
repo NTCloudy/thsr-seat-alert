@@ -6,6 +6,7 @@ settings:
   sale_open_time: "00:00"
   remind_before_sale:
     - "6h"
+    - "30m"
   notify_when_sale_opens: false
 default_legs:
   - label: "回台中"
