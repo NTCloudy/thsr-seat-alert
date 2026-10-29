@@ -24,6 +24,17 @@ default_legs:
     depart_before: "17:00"
     car: "standard"
 trips:
+  - name: "10/30 臨時（2 張）"     # 一次性：10/30 過後自動不再檢查
+    enabled: true
+    done: []
+    legs:
+      - label: "台北→台中"
+        date: "2026-10-30"
+        from: "台北"
+        to: "台中"
+        depart_after: "19:30"
+        depart_before: "20:30"
+        car: "standard"
   - name: "2026 選舉投票"
     holiday: "2026選舉投票日"
     enabled: true
