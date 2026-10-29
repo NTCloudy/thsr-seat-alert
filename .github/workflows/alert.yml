@@ -6,10 +6,21 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "run = 立即檢查一次；test-email = 寄測試信"
+        description: "run = 立即檢查一次；test-email = 寄測試信；debug-seats = 印出原始座位資料"
         type: choice
-        options: [run, test-email]
+        options: [run, test-email, debug-seats]
         default: run
+      date:
+        description: "debug-seats 用：日期 YYYY-MM-DD"
+        required: false
+      from:
+        description: "debug-seats 用：起站"
+        required: false
+        default: "台北"
+      to:
+        description: "debug-seats 用：迄站"
+        required: false
+        default: "台中"
 
 concurrency:
   group: thsr-seat-alert
@@ -41,7 +52,9 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           MODE: ${{ github.event.inputs.mode || 'run' }}
         run: |
-          if [ "$MODE" = "test-email" ]; then
+          if [ "$MODE" = "debug-seats" ]; then
+            python -m thsr_alert seats --from "${{ github.event.inputs.from || '台北' }}" --to "${{ github.event.inputs.to || '台中' }}" --date "${{ github.event.inputs.date }}"
+          elif [ "$MODE" = "test-email" ]; then
             python -m thsr_alert test-email
           else
             source scripts/common.sh && check_once

@@ -48,6 +48,22 @@ def cmd_run(args) -> int:
         time.sleep(args.loop)
 
 
+def cmd_seats(args) -> int:
+    """Debug: raw TDX seat data for one route/date (no email)."""
+    import json
+    from .stations import station_id
+    o, d = station_id(args.frm), station_id(args.to)
+    client = TDXClient(os.environ.get("TDX_CLIENT_ID", ""), os.environ.get("TDX_CLIENT_SECRET", ""))
+    path = f"/v2/Rail/THSR/AvailableSeatStatus/Train/OD/{o}/to/{d}/TrainDate/{args.date}"
+    raw = client.get(path)
+    print(path)
+    items = raw if isinstance(raw, list) else raw
+    print(json.dumps(items, ensure_ascii=False)[:6000])
+    for t in client.seats(o, d, args.date):
+        print(f"{t.train_no} {t.departure}->{t.arrival} 標準={t.standard} 商務={t.business}")
+    return 0
+
+
 def cmd_test_email(args) -> int:
     send_email("✅ 高鐵空位監控：測試信", "收到這封信代表 Email 通知設定成功！", dry_run=args.dry_run)
     return 0
@@ -63,10 +79,14 @@ def main(argv=None) -> int:
     r.add_argument("--loop", type=int, default=0, help="每隔幾秒檢查一次（本機持續執行用）")
     r.add_argument("--dry-run", action="store_true", help="只印出通知，不寄信")
     sub.add_parser("plan", help="列出目前設定會監控哪些日期、何時開賣、何時提醒")
+    sp = sub.add_parser("seats", help="（除錯）印出某天某路線的 TDX 原始座位資料")
+    sp.add_argument("--from", dest="frm", default="台北")
+    sp.add_argument("--to", default="台中")
+    sp.add_argument("--date", required=True)
     t = sub.add_parser("test-email", help="寄一封測試信")
     t.add_argument("--dry-run", action="store_true")
     args = p.parse_args(argv)
-    return {"run": cmd_run, "plan": cmd_plan, "test-email": cmd_test_email}[args.cmd](args)
+    return {"run": cmd_run, "plan": cmd_plan, "test-email": cmd_test_email, "seats": cmd_seats}[args.cmd](args)
 
 
 if __name__ == "__main__":
