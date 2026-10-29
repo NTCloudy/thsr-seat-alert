@@ -91,10 +91,12 @@ def _seat_ok(leg: Leg, t: TrainSeat) -> bool:
     return has_seat(t.standard)
 
 
-def _train_line(t: TrainSeat) -> str:
+def _train_line(t: TrainSeat, car: str = "standard") -> str:
+    """Only the car class being watched is shown (standard-only trips never mention business class)."""
     time_part = f"{t.departure}→{t.arrival}" if t.departure else "時間未知"
-    return (f"  • {t.train_no} 次 {time_part}｜標準：{STATUS_ZH[t.standard]}"
-            f"｜商務：{STATUS_ZH[t.business]}")
+    parts = {"standard": [f"標準車廂：{STATUS_ZH[t.standard]}"], "business": [f"商務車廂：{STATUS_ZH[t.business]}"]}
+    shown = parts.get(car) or parts["standard"] + parts["business"]
+    return f"  • {t.train_no} 次 {time_part}｜" + "｜".join(shown)
 
 
 def check_reminders(leg: Leg, settings: Settings, state: dict, now: datetime, report: Report) -> None:
@@ -135,7 +137,7 @@ def check_seats(leg: Leg, trains: list[TrainSeat], state: dict, now: datetime, r
     if newly:
         head = "目前有座位的車次" if first_scan else "有人退票／釋出座位"
         report.seat_alerts.append(
-            f"{leg.title}（{window}，{car_zh}）\n  {head}：\n" + "\n".join(_train_line(t) for t in newly))
+            f"{leg.title}（{window}，{car_zh}）\n  {head}：\n" + "\n".join(_train_line(t, leg.car) for t in newly))
     elif first_scan:
         if not candidates:
             report.info.append(f"{leg.title}：目前查無符合時段（{window}）的車次資料，會持續監控。")
