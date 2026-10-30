@@ -55,3 +55,19 @@ trips:
     holiday: "2027臺灣光復節"
     enabled: true
     done: []
+  - name: "2027 元旦"
+    holiday: "2027元旦"
+    enabled: true
+    done: []
+  - name: "2027 和平紀念日"
+    holiday: "2027和平紀念日"
+    enabled: true
+    done: []
+  - name: "2027 勞動節"
+    holiday: "2027勞動節"
+    enabled: true
+    done: []
+  - name: "2027 行憲紀念日"
+    holiday: "2027行憲紀念日"
+    enabled: true
+    done: []
