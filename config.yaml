@@ -24,7 +24,7 @@ default_legs:
     depart_before: "17:00"
     car: "standard"
 trips:
-  - name: "10/30 臨時（2 張）"     # 一次性：10/30 過後自動不再檢查
+  - name: "10/30 臨時（2 張）"
     enabled: true
     done: []
     legs:
@@ -37,7 +37,7 @@ trips:
         car: "standard"
   - name: "2026 選舉投票"
     holiday: "2026選舉投票日"
-    enabled: true
+    enabled: false
     done: []
   - name: "2027 春節"
     holiday: "2027春節"
